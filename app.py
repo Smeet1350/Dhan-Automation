@@ -4,6 +4,7 @@ import logging
 import hashlib
 import hmac
 import time
+import os
 from datetime import datetime, timedelta
 from config import Config
 from data_processor import DataProcessor
@@ -39,7 +40,6 @@ def init_alerts_db():
     """Initialize alerts database"""
     try:
         # Ensure instance directory exists
-        import os
         instance_dir = 'instance'
         if not os.path.exists(instance_dir):
             os.makedirs(instance_dir)
