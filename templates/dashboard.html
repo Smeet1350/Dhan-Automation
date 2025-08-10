@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhan Portfolio Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #6366f1;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1f2937;
+            --white: #ffffff;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--gray-800);
+            animation: gradientShift 15s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            25% { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); }
+            50% { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+            75% { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 32px 40px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--success), var(--warning), var(--danger));
+            animation: rainbow 3s linear infinite;
+        }
+        
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        .header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--gray-600);
+            font-size: 1.1rem;
+        }
+        
+        .header-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .header-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .header-btn-primary {
+            background: var(--primary);
+            color: var(--white);
+        }
+        
+        .header-btn-primary:hover {
+            background: #4f46e5;
+            transform: translateY(-2px);
+        }
+        
+        .header-btn-success {
+            background: var(--success);
+            color: var(--white);
+        }
+        
+        .header-btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px 28px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .status-bar:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.connected {
+            background: var(--success);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .last-update {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+        }
+        
+        .sidebar {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            height: fit-content;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .sidebar h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--primary);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .stat-card:hover::before {
+            left: 100%;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        
+        .stat-change {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .stat-change.positive { color: var(--success); }
+        .stat-change.negative { color: var(--danger); }
+        
+
+        
+        .data-table {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .data-table h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .export-btn {
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .export-btn:hover {
+            background: #4f46e5;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        th, td {
+            padding: 16px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+            transition: all 0.2s ease;
+        }
+        
+        th {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+        
+        tr {
+            transition: all 0.2s ease;
+        }
+        
+        tr:hover {
+            background: var(--gray-50);
+            transform: scale(1.01);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pnl-positive { color: var(--success); font-weight: 600; }
+        .pnl-negative { color: var(--danger); font-weight: 600; }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: var(--gray-600);
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid var(--gray-200);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        .loading p {
+            animation: pulse 1.5s ease-in-out infinite;
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            display: none;
+            animation: slideInDown 0.5s ease-out;
+            border-left: 4px solid;
+            font-weight: 500;
+        }
+        
+        .alert.show {
+            display: block;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #065f46;
+            border-left-color: var(--success);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        .alert-error {
+            background: linear-gradient(135deg, #fee2e2, #fca5a5);
+            color: #991b1b;
+            border-left-color: var(--danger);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+        
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal.show {
+            display: block;
+        }
+        
+        .modal-content {
+            background-color: var(--white);
+            margin: 15% auto;
+            padding: 32px;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            animation: modalSlideIn 0.3s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 32px;
+        }
+        
+        .modal-buttons .btn {
+            width: auto;
+            min-width: 120px;
+            padding: 12px 24px;
+            font-weight: 600;
+            border-radius: var(--radius);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .modal-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Badge styles */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-buy {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .badge-sell {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .badge-market {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .badge-limit {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .badge-success {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .badge-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+        
+        .badge-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        /* P&L colors */
+        .pnl-positive {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .pnl-negative {
+            color: var(--danger);
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Dhan Portfolio Dashboard</h1>
+            <p>Real-time portfolio monitoring and position management</p>
+            <div class="header-buttons">
+                <button class="header-btn header-btn-primary" onclick="refreshAllData()">
+                    <i class="fas fa-sync-alt"></i> Refresh All
+                </button>
+                <button class="header-btn header-btn-success" onclick="loadAlerts()">
+                    <i class="fas fa-bell"></i> Refresh Alerts
+                </button>
+                <button class="header-btn header-btn-success" onclick="loadErrorLogs()">
+                    <i class="fas fa-exclamation-triangle"></i> Refresh Logs
+                </button>
+            </div>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="connection-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="connectionText">Checking connection...</span>
+            </div>
+            <div class="last-update">
+                Last updated: <span id="lastUpdate">Never</span>
+            </div>
+        </div>
+        
+        <!-- Alerts -->
+        <div class="alert alert-success" id="successAlert"></div>
+        <div class="alert alert-error" id="errorAlert"></div>
+        
+        <div class="dashboard-grid">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <h3>🔄 Quick Actions</h3>
+                <button class="btn btn-primary" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+
+                <button class="btn btn-warning" onclick="showSquareOffAllModal()">
+                    <i class="fas fa-exclamation-triangle"></i> Square Off All
+                </button>
+                
+                <h3 style="margin-top: 32px;">📈 Auto-Refresh</h3>
+                <div style="margin-bottom: 16px;">
+                    <label>
+                        <input type="checkbox" id="autoRefresh" checked> Enable (60 sec)
+                    </label>
+                </div>
+                
+                <h3 style="margin-top: 32px;">🔗 Connection Info</h3>
+                <div style="font-size: 0.9rem; color: var(--gray-600);">
+                    <div>Response Time: <span id="responseTime">-</span></div>
+                    <div>API Status: <span id="apiStatus">-</span></div>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Loading -->
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Loading portfolio data...</p>
+                </div>
+                
+                <!-- Portfolio Summary -->
+                <div class="stats-grid" id="portfolioSummary" style="display: none;">
+                    <div class="stat-card">
+                        <h3>Total Investment</h3>
+                        <div class="stat-value" id="totalInvestment">₹0.00</div>
+                        <div class="stat-change" id="investmentChange">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Current Value</h3>
+                        <div class="stat-value" id="currentValue">₹0.00</div>
+                        <div class="stat-change" id="valueChange">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total P&L</h3>
+                        <div class="stat-value" id="totalPnL">₹0.00</div>
+                        <div class="stat-change" id="pnlChange">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Holdings</h3>
+                        <div class="stat-value" id="totalHoldings">0</div>
+                        <div class="stat-change">Active Positions</div>
+                    </div>
+                </div>
+                
+
+                
+                <!-- Holdings Table -->
+                <div class="data-table" id="holdingsTable" style="display: none;">
+                    <h3>📋 Portfolio Holdings</h3>
+                    <div id="holdingsContent"></div>
+                </div>
+                
+                <!-- Positions Table -->
+                <div class="data-table" id="positionsTable" style="display: none;">
+                    <h3>🎯 Active Positions</h3>
+                    <div id="positionsContent"></div>
+                </div>
+                
+                <!-- Orders Table -->
+                <div class="data-table" id="ordersTable" style="display: none;">
+                    <h3>📋 Orders</h3>
+                    <div id="ordersContent"></div>
+                </div>
+                
+                <!-- Trade History Table -->
+                <div class="data-table" id="tradesTable" style="display: none;">
+                    <h3>📊 Trade History</h3>
+                    <div id="tradesContent"></div>
+                </div>
+                
+                <!-- Fund Limits -->
+                <div class="data-table" id="fundLimitsTable" style="display: none;">
+                    <h3>💰 Fund Limits</h3>
+                    <div id="fundLimitsContent"></div>
+                </div>
+                
+                <!-- Trading Alerts -->
+                <div class="data-table" id="alertsTable" style="display: none;">
+                    <h3>
+                        🔔 Trading Alerts
+                        <button class="export-btn" onclick="refreshAlerts()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </h3>
+                    <div id="alertsContent"></div>
+                </div>
+                
+                <!-- Error Logs -->
+                <div class="data-table" id="errorLogsTable" style="display: none;">
+                    <h3>
+                        ⚠️ Error Logs
+                        <button class="export-btn" onclick="refreshErrorLogs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </h3>
+                    <div id="errorLogsContent"></div>
+                </div>
+                
+                <!-- Test Alerts Section -->
+                <div class="data-table" id="testAlertsTable" style="display: none;">
+                    <h3>🧪 Test Alerts</h3>
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-success" onclick="createTestAlert('BUY', 'NIFTY50')">
+                            <i class="fas fa-plus"></i> Test BUY NIFTY50
+                        </button>
+                        <button class="btn btn-danger" onclick="createTestAlert('SELL', 'NIFTY50')">
+                            <i class="fas fa-minus"></i> Test SELL NIFTY50
+                        </button>
+                        <button class="btn btn-warning" onclick="createTestAlert('BUY', 'RELIANCE')">
+                            <i class="fas fa-plus"></i> Test BUY RELIANCE
+                        </button>
+                        <button class="btn btn-primary" onclick="createTestAlert('SELL', 'RELIANCE')">
+                            <i class="fas fa-minus"></i> Test SELL RELIANCE
+                        </button>
+                    </div>
+                    <div id="testAlertsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Square Off All Modal -->
+    <div class="modal" id="squareOffAllModal">
+        <div class="modal-content">
+            <h3>⚠️ Square Off All Positions</h3>
+            <p>This will close ALL your active positions at market price. This action cannot be undone.</p>
+            <p><strong>Are you absolutely sure?</strong></p>
+            <div class="modal-buttons">
+                <button class="btn btn-danger" onclick="confirmSquareOffAll()">Yes, Square Off All</button>
+                <button class="btn btn-primary" onclick="closeModal('squareOffAllModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div class="modal" id="confirmationModal">
+        <div class="modal-content">
+            <h3 id="confirmationTitle">Confirm Action</h3>
+            <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            <div class="modal-buttons">
+                <button class="btn btn-danger" id="confirmButton">Confirm</button>
+                <button class="btn btn-primary" onclick="closeModal('confirmationModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let autoRefreshInterval = null;
+        let connectionCheckInterval = null;
+        let lastData = null;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+        });
+        
+        function initializeDashboard() {
+            console.log('🚀 Initializing dashboard...');
+            
+            // Start connection monitoring
+            checkConnection();
+            connectionCheckInterval = setInterval(checkConnection, 30000); // Every 30 seconds
+            
+            // Load initial data
+            console.log('📊 Loading portfolio data...');
+            loadPortfolioData();
+            
+            // Load alerts and error logs
+            console.log('🔔 Loading alerts and error logs...');
+            loadAlerts();
+            loadErrorLogs();
+            
+            // Setup auto-refresh
+            setupAutoRefresh();
+            
+            console.log('✅ Dashboard initialization complete');
+        }
+        
+        function setupAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('autoRefresh');
+            autoRefreshCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+            
+            if (autoRefreshCheckbox.checked) {
+                startAutoRefresh();
+            }
+        }
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(() => {
+                loadPortfolioData();
+                loadAlerts();
+                loadErrorLogs();
+            }, 60000); // 60 seconds
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+        
+        async function checkConnection() {
+            try {
+                const startTime = Date.now();
+                const response = await fetch('/api/connection');
+                const data = await response.json();
+                const responseTime = Date.now() - startTime;
+                
+                updateConnectionStatus(data, responseTime);
+            } catch (error) {
+                updateConnectionStatus({ connected: false, message: 'Connection failed' }, 0);
+            }
+        }
+        
+        function updateConnectionStatus(data, responseTime) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('connectionText');
+            const responseTimeSpan = document.getElementById('responseTime');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            if (data.connected) {
+                indicator.className = 'status-indicator connected';
+                text.textContent = 'Connected to Dhan API';
+                text.style.color = 'var(--success)';
+                apiStatus.textContent = 'Active';
+                apiStatus.style.color = 'var(--success)';
+            } else {
+                indicator.className = 'status-indicator';
+                text.textContent = data.message || 'Disconnected';
+                text.style.color = 'var(--danger)';
+                apiStatus.textContent = 'Inactive';
+                apiStatus.style.color = 'var(--danger)';
+            }
+            
+            responseTimeSpan.textContent = responseTime > 0 ? `${responseTime}ms` : '-';
+        }
+        
+        async function loadPortfolioData() {
+            showLoading(true);
+            
+            try {
+                console.log('🔄 Loading portfolio data...');
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                // Debug: Show data structure
+                console.log('🔍 Raw API response:', response);
+                console.log('🔍 Parsed data:', data);
+                console.log('🔍 Data type:', typeof data);
+                console.log('🔍 Data keys:', Object.keys(data || {}));
+                
+                console.log('📊 Received data:', data);
+                console.log('📋 Data structure check:', {
+                    hasHoldings: !!data.holdings,
+                    hasCategorizedHoldings: !!data.categorized_holdings,
+                    hasPositions: !!data.positions,
+                    hasSummary: !!data.summary,
+                    holdingsLength: data.holdings?.length || 0,
+                    categorizedHoldingsLength: data.categorized_holdings?.equity?.length || 0,
+                    positionsLength: data.positions?.length || 0
+                });
+                
+                // Check if we have data in either format
+                const hasData = data && (
+                    (data.holdings && data.holdings.length > 0) ||
+                    (data.categorized_holdings && data.categorized_holdings.equity && data.categorized_holdings.equity.length > 0) ||
+                    (data.positions && data.positions.length > 0) ||
+                    data.summary
+                );
+                
+                if (hasData) {
+                    console.log('✅ Data validation passed, updating dashboard...');
+                    console.log('📊 Data summary:', {
+                        holdingsCount: data.holdings?.length || 0,
+                        categorizedHoldingsCount: data.categorized_holdings?.equity?.length || 0,
+                        positionsCount: data.positions?.length || 0,
+                        summary: data.summary
+                    });
+                    lastData = data;
+                    updateDashboard(data);
+                    updateLastUpdate();
+                    showAlert('Data refreshed successfully!', 'success');
+                } else {
+                    console.log('❌ Data validation failed');
+                    console.log('❌ Data structure:', data);
+                    showAlert('Failed to load data: No portfolio data available', 'error');
+                }
+            } catch (error) {
+                console.error('💥 Error in loadPortfolioData:', error);
+                showAlert('Error loading data: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function updateDashboard(data) {
+            console.log('🔄 Updating dashboard with data:', data);
+            
+            // Check if HTML elements exist
+            const elements = {
+                portfolioSummary: document.getElementById('portfolioSummary'),
+
+                holdingsTable: document.getElementById('holdingsTable'),
+                positionsTable: document.getElementById('positionsTable'),
+                ordersTable: document.getElementById('ordersTable'),
+                tradesTable: document.getElementById('tradesTable'),
+                fundLimitsTable: document.getElementById('fundLimitsTable')
+            };
+            
+            console.log('🔍 HTML elements check:', elements);
+            
+            // Update portfolio summary
+            updatePortfolioSummary(data);
+            
+
+            
+            // Update tables - handle both data structures
+            const holdings = data.holdings || data.categorized_holdings?.equity || [];
+            const positions = data.positions || [];
+            const orders = data.orders || [];
+            const trades = data.trade_history || [];
+            const fundLimits = data.fund_limits || {};
+            
+            console.log('📋 Updating holdings table with:', holdings);
+            console.log('📋 Holdings data structure:', {
+                directHoldings: data.holdings,
+                categorizedHoldings: data.categorized_holdings,
+                finalHoldings: holdings
+            });
+            updateHoldingsTable(holdings);
+            
+            console.log('🎯 Updating positions table with:', positions);
+            updatePositionsTable(positions);
+            
+            console.log('📋 Updating orders table with:', orders);
+            updateOrdersTable(orders);
+            
+            console.log('📊 Updating trades table with:', trades);
+            console.log('📊 Trades data structure:', {
+                directTrades: data.trade_history,
+                finalTrades: trades
+            });
+            updateTradesTable(trades);
+            
+            console.log('💰 Updating fund limits table with:', fundLimits);
+            updateFundLimitsTable(fundLimits);
+            
+            // Show all sections
+            console.log('👁️ Showing all dashboard sections...');
+            if (elements.portfolioSummary) elements.portfolioSummary.style.display = 'grid';
+
+            if (elements.holdingsTable) elements.holdingsTable.style.display = 'block';
+            if (elements.positionsTable) elements.positionsTable.style.display = 'block';
+            if (elements.ordersTable) elements.ordersTable.style.display = 'block';
+            if (elements.tradesTable) elements.tradesTable.style.display = 'block';
+            if (elements.fundLimitsTable) elements.fundLimitsTable.style.display = 'block';
+            
+            console.log('✅ Dashboard update completed');
+        }
+        
+        function updatePortfolioSummary(data) {
+            const summary = data.summary || {};
+            
+            // Calculate holdings count from available data
+            const holdingsCount = (data.holdings && data.holdings.length) || 
+                                (data.categorized_holdings && data.categorized_holdings.equity && data.categorized_holdings.equity.length) || 0;
+            
+            document.getElementById('totalInvestment').textContent = summary.total_portfolio_value || '₹0.00';
+            document.getElementById('currentValue').textContent = summary.total_portfolio_value || '₹0.00';
+            document.getElementById('totalPnL').textContent = summary.total_pnl_amount || '₹0.00';
+            document.getElementById('totalHoldings').textContent = holdingsCount.toString();
+            
+            // Update P&L colors
+            const pnlElement = document.getElementById('totalPnL');
+            const pnlChange = document.getElementById('pnlChange');
+            
+            if (summary.total_pnl_percentage) {
+                const pnlPercent = parseFloat(summary.total_pnl_percentage.replace('%', ''));
+                if (pnlPercent >= 0) {
+                    pnlElement.style.color = 'var(--success)';
+                    pnlChange.textContent = `+${summary.total_pnl_percentage}`;
+                    pnlChange.className = 'stat-change positive';
+                } else {
+                    pnlElement.style.color = 'var(--danger)';
+                    pnlChange.textContent = summary.total_pnl_percentage;
+                    pnlChange.className = 'stat-change negative';
+                }
+            } else if (summary.pnl_color === 'red') {
+                pnlElement.style.color = 'var(--danger)';
+                pnlChange.textContent = summary.total_pnl_percentage || '-1.46%';
+                pnlChange.className = 'stat-change negative';
+            }
+        }
+        
+
+        
+        function updateHoldingsTable(holdings) {
+            console.log('📋 updateHoldingsTable called with:', holdings);
+            console.log('📋 Holdings length:', holdings.length);
+            console.log('📋 Holdings data:', holdings);
+            
+            if (holdings.length === 0) {
+                console.log('📋 No holdings, showing empty message');
+                document.getElementById('holdingsContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No holdings found</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Quantity</th>
+                            <th>Avg Cost</th>
+                            <th>Current Price</th>
+                            <th>P&L</th>
+                            <th>Total Value</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            holdings.forEach(holding => {
+                const pnlClass = holding.pnl_color === 'green' ? 'pnl-positive' : 'pnl-negative';
+                tableHTML += `
+                    <tr>
+                        <td><strong>${holding.symbol}</strong></td>
+                        <td>${holding.quantity}</td>
+                        <td>${holding.avg_cost_price}</td>
+                        <td>${holding.last_traded_price}</td>
+                        <td class="${pnlClass}">${holding.pnl_amount} (${holding.pnl_percentage})</td>
+                        <td>${holding.total_value}</td>
+                        <td>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" 
+                                    onclick="squareOffPosition('${holding.security_id}', '${holding.symbol}')">
+                                Square Off
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('holdingsContent').innerHTML = tableHTML;
+        }
+        
+        function updatePositionsTable(positions) {
+            if (positions.length === 0) {
+                document.getElementById('positionsContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No active positions</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Entry Price</th>
+                            <th>Current Price</th>
+                            <th>P&L</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            positions.forEach(position => {
+                const pnlClass = position.pnl_color === 'green' ? 'pnl-positive' : 'pnl-negative';
+                tableHTML += `
+                    <tr>
+                        <td><strong>${position.symbol}</strong></td>
+                        <td><span class="badge badge-${position.type.toLowerCase()}">${position.type}</span></td>
+                        <td>${position.quantity}</td>
+                        <td>${position.avg_price}</td>
+                        <td>${position.current_price}</td>
+                        <td class="${pnlClass}">${position.pnl_amount} (${position.pnl_percentage})</td>
+                        <td>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" 
+                                    onclick="squareOffPosition('${position.security_id}', '${position.symbol}')">
+                                Square Off
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('positionsContent').innerHTML = tableHTML;
+        }
+        
+        function updateOrdersTable(orders) {
+            if (orders.length === 0) {
+                document.getElementById('ordersContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No orders found</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Type</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            orders.forEach(order => {
+                const statusClass = order.status === 'COMPLETE' ? 'badge-success' : 
+                                  order.status === 'PENDING' ? 'badge-warning' : 
+                                  order.status === 'REJECTED' ? 'badge-danger' : 'badge-primary';
+                
+                tableHTML += `
+                    <tr>
+                        <td><strong>${order.symbol || 'N/A'}</strong></td>
+                        <td><span class="badge badge-${(order.order_type || 'MARKET').toLowerCase()}">${order.order_type || 'MARKET'}</span></td>
+                        <td><span class="badge badge-${(order.side || 'BUY').toLowerCase()}">${order.side || 'BUY'}</span></td>
+                        <td>${order.quantity || 'N/A'}</td>
+                        <td>${order.price || 'N/A'}</td>
+                        <td><span class="badge ${statusClass}">${order.status || 'N/A'}</span></td>
+                        <td>${order.timestamp || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('ordersContent').innerHTML = tableHTML;
+        }
+        
+        function updateTradesTable(trades) {
+            if (trades.length === 0) {
+                document.getElementById('tradesContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No trade history found</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            trades.forEach(trade => {
+                const side = trade.transaction_type || 'BUY';
+                const sideClass = side.toLowerCase();
+                
+                tableHTML += `
+                    <tr>
+                        <td><strong>${trade.symbol || 'N/A'}</strong></td>
+                        <td><span class="badge badge-${sideClass}">${side}</span></td>
+                        <td>${trade.quantity || 'N/A'}</td>
+                        <td>${trade.price || 'N/A'}</td>
+                        <td>${trade.exchange_time || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('tradesContent').innerHTML = tableHTML;
+        }
+        
+        function updateFundLimitsTable(fundLimits) {
+            if (!fundLimits || Object.keys(fundLimits).length === 0) {
+                document.getElementById('fundLimitsContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No fund limits data available</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            const fundData = [
+                { label: 'Available Balance', value: fundLimits.available_balance || 'N/A' },
+                { label: 'SOD Limit', value: fundLimits.sod_limit || 'N/A' },
+                { label: 'Collateral Amount', value: fundLimits.collateral_amount || 'N/A' },
+                { label: 'Utilized Amount', value: fundLimits.utilized_amount || 'N/A' },
+                { label: 'Withdrawable Balance', value: fundLimits.withdrawable_balance || 'N/A' },
+                { label: 'Receivable Amount', value: fundLimits.receivable_amount || 'N/A' }
+            ];
+            
+            fundData.forEach(item => {
+                tableHTML += `
+                    <tr>
+                        <td><strong>${item.label}</strong></td>
+                        <td>${item.value}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('fundLimitsContent').innerHTML = tableHTML;
+        }
+        
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+        
+        function showAlert(message, type) {
+            const alert = document.getElementById(type === 'success' ? 'successAlert' : 'errorAlert');
+            alert.textContent = message;
+            alert.classList.add('show');
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+        
+        function refreshData() {
+            loadPortfolioData();
+            loadAlerts();
+            loadErrorLogs();
+        }
+        
+        async function squareOffPosition(securityId, symbol) {
+            showConfirmationModal(
+                `Square Off ${symbol}`,
+                `Are you sure you want to square off your position in ${symbol}?`,
+                () => executeSquareOff(securityId, symbol)
+            );
+        }
+        
+        async function executeSquareOff(securityId, symbol) {
+            try {
+                const response = await fetch('/api/square-off', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ security_id: securityId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`Successfully squared off ${symbol}!`, 'success');
+                    loadPortfolioData(); // Refresh data
+                } else {
+                    showAlert(`Failed to square off ${symbol}: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error squaring off ${symbol}: ${error.message}`, 'error');
+            }
+            
+            closeModal('confirmationModal');
+        }
+        
+        function showSquareOffAllModal() {
+            document.getElementById('squareOffAllModal').classList.add('show');
+        }
+        
+        async function confirmSquareOffAll() {
+            try {
+                const response = await fetch('/api/square-off-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Successfully squared off all positions!', 'success');
+                    loadPortfolioData(); // Refresh data
+                } else {
+                    showAlert(`Failed to square off all positions: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error squaring off all positions: ${error.message}`, 'error');
+            }
+            
+            closeModal('squareOffAllModal');
+        }
+        
+        function showConfirmationModal(title, message, onConfirm) {
+            document.getElementById('confirmationTitle').textContent = title;
+            document.getElementById('confirmationMessage').textContent = message;
+            document.getElementById('confirmButton').onclick = onConfirm;
+            document.getElementById('confirmationModal').classList.add('show');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+        
+        // Alerts Functions
+        function refreshAlerts() {
+            loadAlerts();
+        }
+        
+        function refreshAllData() {
+            loadPortfolioData();
+            loadAlerts();
+            loadErrorLogs();
+        }
+        
+        async function loadAlerts() {
+            try {
+                console.log('🔄 Loading alerts...');
+                const response = await fetch('/api/alerts');
+                const data = await response.json();
+                
+                console.log('🔍 Alerts API response:', data);
+                
+                if (data.success) {
+                    console.log(`✅ Found ${data.count} alerts:`, data.alerts);
+                    updateAlertsTable(data.alerts);
+                    document.getElementById('alertsTable').style.display = 'block';
+                    showAlert(`Alerts refreshed! Found ${data.count} alerts`, 'success');
+                } else {
+                    console.error('❌ Failed to load alerts:', data.error);
+                    showAlert('Failed to load alerts: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error loading alerts:', error);
+                showAlert('Error loading alerts: ' + error.message, 'error');
+            }
+        }
+        
+        // Error Logs Functions
+        function refreshErrorLogs() {
+            loadErrorLogs();
+        }
+        
+        async function loadErrorLogs() {
+            try {
+                console.log('🔄 Loading error logs...');
+                const response = await fetch('/api/error-logs');
+                const data = await response.json();
+                
+                console.log('🔍 Error logs API response:', data);
+                
+                if (data.success) {
+                    console.log(`✅ Found ${data.count} error logs:`, data.logs);
+                    updateErrorLogsTable(data.logs);
+                    document.getElementById('errorLogsTable').style.display = 'block';
+                    showAlert(`Error logs refreshed! Found ${data.count} logs`, 'success');
+                } else {
+                    console.error('❌ Failed to load error logs:', data.error);
+                    showAlert('Failed to load error logs: ' + data.error, 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error loading error logs:', error);
+                showAlert('Error loading error logs: ' + error.message, 'error');
+            }
+        }
+        
+        function updateErrorLogsTable(logs) {
+            if (logs.length === 0) {
+                document.getElementById('errorLogsContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No error logs found</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Level</th>
+                            <th>Source</th>
+                            <th>Message</th>
+                            <th>Details</th>
+                            <th>Alert ID</th>
+                            <th>Trade ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            logs.forEach(log => {
+                const levelClass = getLevelClass(log.level);
+                
+                tableHTML += `
+                    <tr>
+                        <td>${formatTimestamp(log.timestamp)}</td>
+                        <td><span class="badge ${levelClass}">${log.level}</span></td>
+                        <td><strong>${log.source}</strong></td>
+                        <td>${log.message}</td>
+                        <td>${log.details ? `<details><summary>View</summary><pre>${log.details}</pre></details>` : '-'}</td>
+                        <td>${log.alert_id || '-'}</td>
+                        <td>${log.trade_id || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('errorLogsContent').innerHTML = tableHTML;
+        }
+        
+        function getLevelClass(level) {
+            switch(level) {
+                case 'ERROR': return 'badge-danger';
+                case 'WARNING': return 'badge-warning';
+                case 'INFO': return 'badge-info';
+                case 'SUCCESS': return 'badge-success';
+                default: return 'badge-primary';
+            }
+        }
+        
+        function updateAlertsTable(alerts) {
+            if (alerts.length === 0) {
+                document.getElementById('alertsContent').innerHTML = '<p style="text-align: center; color: var(--gray-600); padding: 40px;">No trading alerts found</p>';
+                return;
+            }
+            
+            let tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Action</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            alerts.forEach(alert => {
+                const statusClass = getStatusClass(alert.status);
+                const actionClass = getActionClass(alert.action);
+                
+                tableHTML += `
+                    <tr>
+                        <td>${formatTimestamp(alert.timestamp)}</td>
+                        <td><strong>${alert.symbol}</strong></td>
+                        <td><span class="badge ${actionClass}">${alert.action}</span></td>
+                        <td><span class="badge badge-primary">${alert.alert_type}</span></td>
+                        <td>₹${alert.price || '0.00'}</td>
+                        <td>${alert.quantity}</td>
+                        <td><span class="badge ${statusClass}">${alert.status}</span></td>
+                        <td>${alert.message || '-'}</td>
+                        <td>
+                            ${getAlertActions(alert)}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableHTML += '</tbody></table>';
+            document.getElementById('alertsContent').innerHTML = tableHTML;
+        }
+        
+        function getStatusClass(status) {
+            switch(status) {
+                case 'PENDING': return 'badge-warning';
+                case 'EXECUTED': return 'badge-success';
+                case 'CLOSED': return 'badge-primary';
+                case 'FAILED': return 'badge-danger';
+                default: return 'badge-primary';
+            }
+        }
+        
+        function getActionClass(action) {
+            switch(action) {
+                case 'BUY': return 'badge-success';
+                case 'SELL': return 'badge-danger';
+                case 'LONG': return 'badge-success';
+                case 'SHORT': return 'badge-danger';
+                case 'EXIT': return 'badge-warning';
+                default: return 'badge-primary';
+            }
+        }
+        
+        function getAlertActions(alert) {
+            let actions = '';
+            
+            if (alert.status === 'PENDING') {
+                actions += `<button class="btn btn-success" style="padding: 4px 8px; font-size: 0.7rem; margin: 2px;" onclick="executeAlert('${alert.alert_id}')">Execute</button> `;
+                actions += `<button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.7rem; margin: 2px;" onclick="cancelAlert('${alert.alert_id}')">Cancel</button>`;
+            } else if (alert.status === 'EXECUTED') {
+                actions += `<button class="btn btn-warning" style="padding: 4px 8px; font-size: 0.7rem; margin: 2px;" onclick="closePosition('${alert.alert_id}')">Close</button>`;
+            }
+            
+            return actions;
+        }
+        
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '-';
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString('en-IN');
+            } catch (e) {
+                return timestamp;
+            }
+        }
+        
+        async function executeAlert(alertId) {
+            try {
+                showAlert('Executing alert...', 'success');
+                
+                // Update alert status to EXECUTED
+                const response = await fetch(`/api/alerts/${alertId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'EXECUTED',
+                        trade_id: `trade_${Date.now()}`
+                    })
+                });
+                
+                if (response.ok) {
+                    showAlert('Alert executed successfully!', 'success');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    showAlert('Failed to execute alert', 'error');
+                }
+            } catch (error) {
+                showAlert('Error executing alert: ' + error.message, 'error');
+            }
+        }
+        
+        async function cancelAlert(alertId) {
+            try {
+                const response = await fetch(`/api/alerts/${alertId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'CANCELLED'
+                    })
+                });
+                
+                if (response.ok) {
+                    showAlert('Alert cancelled successfully!', 'success');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    showAlert('Failed to cancel alert', 'error');
+                }
+            } catch (error) {
+                showAlert('Error cancelling alert: ' + error.message, 'error');
+            }
+        }
+        
+        async function closePosition(alertId) {
+            try {
+                const response = await fetch(`/api/alerts/${alertId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status: 'CLOSED',
+                        exit_price: 0.0,
+                        pnl: 0.0
+                    })
+                });
+                
+                if (response.ok) {
+                    showAlert('Position closed successfully!', 'success');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    showAlert('Failed to close position', 'error');
+                }
+            } catch (error) {
+                showAlert('Error closing position: ' + error.message, 'error');
+            }
+        }
+        
+        async function createTestAlert(action, symbol) {
+            try {
+                showAlert(`Creating test ${action} alert for ${symbol}...`, 'success');
+                
+                const response = await fetch('/api/alerts/test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        symbol: symbol
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert(`Test alert created: ${action} ${symbol}`, 'success');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    showAlert('Failed to create test alert: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error creating test alert: ' + error.message, 'error');
+            }
+        }
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
