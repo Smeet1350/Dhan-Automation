@@ -38,7 +38,17 @@ connection_status = {
 def init_alerts_db():
     """Initialize alerts database"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        # Ensure instance directory exists
+        import os
+        instance_dir = 'instance'
+        if not os.path.exists(instance_dir):
+            os.makedirs(instance_dir)
+            logger.info(f"✅ Created directory: {instance_dir}")
+        
+        db_path = os.path.join(instance_dir, 'trading_automation.db')
+        logger.info(f"🗄️ Database path: {db_path}")
+        
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Create trading alerts table with correct schema (only if it doesn't exist)
@@ -82,6 +92,21 @@ def init_alerts_db():
         conn.commit()
         conn.close()
         logger.info("✅ Alerts database initialized successfully")
+        
+        # Test the database connection
+        try:
+            test_conn = sqlite3.connect(db_path)
+            test_cursor = test_conn.cursor()
+            test_cursor.execute('SELECT COUNT(*) FROM trading_alerts')
+            alert_count = test_cursor.fetchone()[0]
+            test_cursor.execute('SELECT COUNT(*) FROM error_logs')
+            log_count = test_cursor.fetchone()[0]
+            test_conn.close()
+            logger.info(f"🗄️ Database test successful - Alerts: {alert_count}, Logs: {log_count}")
+        except Exception as test_e:
+            logger.error(f"❌ Database test failed: {str(test_e)}")
+            return False
+        
         return True
     except Exception as e:
         logger.error(f"❌ Error initializing alerts database: {str(e)}")
@@ -90,7 +115,8 @@ def init_alerts_db():
 def log_error(level, source, message, details=None, alert_id=None, trade_id=None):
     """Log error to database"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -109,7 +135,8 @@ def log_error(level, source, message, details=None, alert_id=None, trade_id=None
 def get_error_logs(limit=50):
     """Get error logs from database"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -134,7 +161,8 @@ def get_error_logs(limit=50):
 def save_alert(alert_data):
     """Save alert to database"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -168,7 +196,8 @@ def save_alert(alert_data):
 def get_alerts():
     """Get all alerts from database"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -193,7 +222,8 @@ def get_alerts():
 def update_alert_status(alert_id, status, trade_id=None, pnl=None, exit_price=None):
     """Update alert status"""
     try:
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         if status == 'EXECUTED':
@@ -403,11 +433,41 @@ def refresh_connection():
 @app.route('/api/health')
 def health_check():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'connection': connection_status
-    })
+    try:
+        # Test database connection
+        db_status = "unknown"
+        db_info = "unknown"
+        try:
+            db_path = os.path.join('instance', 'trading_automation.db')
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM trading_alerts')
+            alert_count = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM error_logs')
+            log_count = cursor.fetchone()[0]
+            conn.close()
+            db_status = "healthy"
+            db_info = f"Alerts: {alert_count}, Logs: {log_count}"
+        except Exception as db_e:
+            db_status = "unhealthy"
+            db_info = str(db_e)
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'service': 'Dhan Portfolio Dashboard',
+            'connection': connection_status,
+            'database': {
+                'status': db_status,
+                'info': db_info
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/square-off', methods=['POST'])
 def square_off_position():
@@ -934,7 +994,8 @@ def check_daily_trade_limits():
     """Check daily trade limits"""
     try:
         # Get today's trades count
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         today = datetime.now().strftime('%Y-%m-%d')
@@ -1421,7 +1482,8 @@ def execute_alert():
         logger.info(f"🚀 Manually executing alert ID: {alert_id}")
         
         # Get the alert from database
-        conn = sqlite3.connect('instance/trading_automation.db')
+        db_path = os.path.join('instance', 'trading_automation.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM trading_alerts WHERE alert_id = ?', (alert_id,))
         alert = cursor.fetchone()
@@ -1494,7 +1556,8 @@ def execute_alert():
         
         if success:
             # Update alert status to EXECUTED
-            conn = sqlite3.connect('instance/trading_automation.db')
+            db_path = os.path.join('instance', 'trading_automation.db')
+            conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute('UPDATE trading_alerts SET status = ?, executed_at = ? WHERE id = ?', 
                          ('EXECUTED', datetime.now().isoformat(), alert_id))
@@ -1505,7 +1568,8 @@ def execute_alert():
             return jsonify({'success': True, 'message': 'Alert executed successfully'})
         else:
             # Update alert status to FAILED
-            conn = sqlite3.connect('instance/trading_automation.db')
+            db_path = os.path.join('instance', 'trading_automation.db')
+            conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute('UPDATE trading_alerts SET status = ? WHERE id = ?', ('FAILED', alert_id))
             conn.commit()
