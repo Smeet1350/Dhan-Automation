@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: dhan-automation-dashboard
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FLASK_ENV
+        value: production
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: DHAN_CLIENT_ID
+        sync: false
+      - key: DHAN_ACCESS_TOKEN
+        sync: false
+      - key: API_SECRET
+        generateValue: true
+    healthCheckPath: /api/health
+    autoDeploy: true
