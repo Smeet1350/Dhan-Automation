@@ -35,220 +35,201 @@ connection_status = {
     'last_check': None
 }
 
-# Initialize alerts database
-def init_alerts_db():
-    """Initialize alerts database"""
+# Initialize alerts storage (JSON files instead of SQLite)
+def init_alerts_storage():
+    """Initialize alerts storage using JSON files"""
     try:
-        # Ensure instance directory exists
-        instance_dir = 'instance'
-        if not os.path.exists(instance_dir):
-            os.makedirs(instance_dir)
-            logger.info(f"✅ Created directory: {instance_dir}")
+        # Ensure data directory exists
+        data_dir = 'data'
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+            logger.info(f"✅ Created directory: {data_dir}")
         
-        db_path = os.path.join(instance_dir, 'trading_automation.db')
-        logger.info(f"🗄️ Database path: {db_path}")
+        # Initialize alerts file
+        alerts_file = os.path.join(data_dir, 'trading_alerts.json')
+        if not os.path.exists(alerts_file):
+            with open(alerts_file, 'w', encoding='utf-8') as f:
+                json.dump([], f, ensure_ascii=False, indent=2)
+            logger.info(f"✅ Created alerts file: {alerts_file}")
         
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # Initialize error logs file
+        logs_file = os.path.join(data_dir, 'error_logs.json')
+        if not os.path.exists(logs_file):
+            with open(logs_file, 'w', encoding='utf-8') as f:
+                json.dump([], f, ensure_ascii=False, indent=2)
+            logger.info(f"✅ Created error logs file: {logs_file}")
         
-        # Create trading alerts table with correct schema (only if it doesn't exist)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS trading_alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                alert_id TEXT UNIQUE NOT NULL,
-                symbol TEXT NOT NULL,
-                alert_type TEXT NOT NULL,
-                action TEXT NOT NULL,
-                price REAL NOT NULL,
-                quantity INTEGER NOT NULL,
-                status TEXT DEFAULT 'PENDING',
-                message TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                executed_at DATETIME,
-                trade_id TEXT,
-                pnl REAL,
-                exit_price REAL,
-                exit_timestamp DATETIME,
-                strategy TEXT,
-                timeframe TEXT,
-                exchange TEXT
-            )
-        ''')
-        
-        # Create error logs table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS error_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                level TEXT NOT NULL,
-                source TEXT NOT NULL,
-                message TEXT NOT NULL,
-                details TEXT,
-                alert_id TEXT,
-                trade_id TEXT
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-        logger.info("✅ Alerts database initialized successfully")
-        
-        # Test the database connection
-        try:
-            test_conn = sqlite3.connect(db_path)
-            test_cursor = test_conn.cursor()
-            test_cursor.execute('SELECT COUNT(*) FROM trading_alerts')
-            alert_count = test_cursor.fetchone()[0]
-            test_cursor.execute('SELECT COUNT(*) FROM error_logs')
-            log_count = test_cursor.fetchone()[0]
-            test_conn.close()
-            logger.info(f"🗄️ Database test successful - Alerts: {alert_count}, Logs: {log_count}")
-        except Exception as test_e:
-            logger.error(f"❌ Database test failed: {str(test_e)}")
-            return False
-        
+        logger.info("✅ Alerts storage initialized successfully")
         return True
+        
     except Exception as e:
-        logger.error(f"❌ Error initializing alerts database: {str(e)}")
+        logger.error(f"❌ Error initializing alerts storage: {str(e)}")
         return False
 
 def log_error(level, source, message, details=None, alert_id=None, trade_id=None):
-    """Log error to database"""
+    """Log error to JSON file"""
     try:
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        logs_file = os.path.join('data', 'error_logs.json')
         
-        cursor.execute('''
-            INSERT INTO error_logs (level, source, message, details, alert_id, trade_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (level, source, message, details, alert_id, trade_id))
+        # Read existing logs
+        logs = []
+        if os.path.exists(logs_file):
+            try:
+                with open(logs_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+            except:
+                logs = []
         
-        conn.commit()
-        conn.close()
+        # Add new log entry
+        new_log = {
+            'id': len(logs) + 1,
+            'timestamp': datetime.now().isoformat(),
+            'level': level,
+            'source': source,
+            'message': message,
+            'details': details,
+            'alert_id': alert_id,
+            'trade_id': trade_id
+        }
+        
+        logs.append(new_log)
+        
+        # Keep only last 1000 logs
+        if len(logs) > 1000:
+            logs = logs[-1000:]
+        
+        # Write back to file
+        with open(logs_file, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, ensure_ascii=False, indent=2)
+        
         logger.info(f"✅ Error logged: {level} - {source}: {message}")
         return True
+        
     except Exception as e:
         logger.error(f"❌ Error logging error: {str(e)}")
         return False
 
 def get_error_logs(limit=50):
-    """Get error logs from database"""
+    """Get error logs from JSON file"""
     try:
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        logs_file = os.path.join('data', 'error_logs.json')
         
-        cursor.execute('''
-            SELECT * FROM error_logs 
-            ORDER BY timestamp DESC 
-            LIMIT ?
-        ''', (limit,))
+        if not os.path.exists(logs_file):
+            return []
         
-        columns = [description[0] for description in cursor.description]
-        logs = []
+        with open(logs_file, 'r', encoding='utf-8') as f:
+            logs = json.load(f)
         
-        for row in cursor.fetchall():
-            log = dict(zip(columns, row))
-            logs.append(log)
+        # Return most recent logs
+        return logs[-limit:] if len(logs) > limit else logs
         
-        conn.close()
-        return logs
     except Exception as e:
         logger.error(f"❌ Error fetching error logs: {str(e)}")
         return []
 
 def save_alert(alert_data):
-    """Save alert to database"""
+    """Save alert to JSON file"""
     try:
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        alerts_file = os.path.join('data', 'trading_alerts.json')
         
-        cursor.execute('''
-            INSERT OR REPLACE INTO trading_alerts 
-            (alert_id, symbol, alert_type, action, price, quantity, status, message, timestamp, strategy, timeframe, exchange)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            alert_data.get('alert_id', f"alert_{int(time.time())}"),
-            alert_data.get('symbol', 'NIFTY50'),
-            alert_data.get('alert_type', 'PRICE'),
-            alert_data.get('action', 'BUY'),
-            alert_data.get('price', 0.0),
-            alert_data.get('quantity', 1),
-            'PENDING',  # Default status
-            alert_data.get('message', ''),
-            datetime.now().isoformat(),
-            alert_data.get('strategy', ''),
-            alert_data.get('timeframe', ''),
-            alert_data.get('exchange', 'NSE')
-        ))
+        # Read existing alerts
+        alerts = []
+        if os.path.exists(alerts_file):
+            try:
+                with open(alerts_file, 'r', encoding='utf-8') as f:
+                    alerts = json.load(f)
+            except:
+                alerts = []
         
-        conn.commit()
-        conn.close()
+        # Create new alert
+        new_alert = {
+            'id': len(alerts) + 1,
+            'alert_id': alert_data.get('alert_id', f"alert_{int(time.time())}"),
+            'symbol': alert_data.get('symbol', 'NIFTY50'),
+            'alert_type': alert_data.get('alert_type', 'PRICE'),
+            'action': alert_data.get('action', 'BUY'),
+            'price': float(alert_data.get('price', 0)),
+            'quantity': int(alert_data.get('quantity', 1)),
+            'status': 'PENDING',  # Default status
+            'message': alert_data.get('message', ''),
+            'timestamp': datetime.now().isoformat(),
+            'strategy': alert_data.get('strategy', ''),
+            'timeframe': alert_data.get('timeframe', ''),
+            'exchange': alert_data.get('exchange', 'NSE'),
+            'executed_at': None,
+            'trade_id': None,
+            'pnl': None,
+            'exit_price': None,
+            'exit_timestamp': None
+        }
+        
+        alerts.append(new_alert)
+        
+        # Write back to file
+        with open(alerts_file, 'w', encoding='utf-8') as f:
+            json.dump(alerts, f, ensure_ascii=False, indent=2)
+        
         logger.info(f"✅ Alert saved: {alert_data.get('action')} {alert_data.get('symbol')}")
         return True
+        
     except Exception as e:
         logger.error(f"❌ Error saving alert: {str(e)}")
         log_error('ERROR', 'save_alert', f'Failed to save alert: {str(e)}', str(alert_data))
         return False
 
 def get_alerts():
-    """Get all alerts from database"""
+    """Get all alerts from JSON file"""
     try:
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        alerts_file = os.path.join('data', 'trading_alerts.json')
         
-        cursor.execute('''
-            SELECT * FROM trading_alerts 
-            ORDER BY timestamp DESC 
-            LIMIT 100
-        ''')
+        if not os.path.exists(alerts_file):
+            return []
         
-        columns = [description[0] for description in cursor.description]
-        alerts = []
+        with open(alerts_file, 'r', encoding='utf-8') as f:
+            alerts = json.load(f)
         
-        for row in cursor.fetchall():
-            alert = dict(zip(columns, row))
-            alerts.append(alert)
+        # Return most recent alerts
+        return alerts[-100:] if len(alerts) > 100 else alerts
         
-        conn.close()
-        return alerts
     except Exception as e:
         logger.error(f"❌ Error fetching alerts: {str(e)}")
         return []
 
 def update_alert_status(alert_id, status, trade_id=None, pnl=None, exit_price=None):
-    """Update alert status"""
+    """Update alert status in JSON file"""
     try:
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        alerts_file = os.path.join('data', 'trading_alerts.json')
         
-        if status == 'EXECUTED':
-            cursor.execute('''
-                UPDATE trading_alerts 
-                SET status = ?, executed_at = ?, trade_id = ?
-                WHERE alert_id = ?
-            ''', (status, datetime.now().isoformat(), trade_id, alert_id))
-        elif status == 'CLOSED':
-            cursor.execute('''
-                UPDATE trading_alerts 
-                SET status = ?, exit_price = ?, exit_timestamp = ?, pnl = ?
-                WHERE alert_id = ?
-            ''', (status, exit_price, datetime.now().isoformat(), pnl, alert_id))
-        else:
-            cursor.execute('''
-                UPDATE trading_alerts 
-                SET status = ?
-                WHERE alert_id = ?
-            ''', (status, alert_id))
+        if not os.path.exists(alerts_file):
+            return False
         
-        conn.commit()
-        conn.close()
-        logger.info(f"✅ Alert {alert_id} status updated to {status}")
-        return True
+        # Read existing alerts
+        with open(alerts_file, 'r', encoding='utf-8') as f:
+            alerts = json.load(f)
+        
+        # Find and update the alert
+        for alert in alerts:
+            if str(alert.get('alert_id')) == str(alert_id):
+                alert['status'] = status
+                
+                if status == 'EXECUTED':
+                    alert['executed_at'] = datetime.now().isoformat()
+                    alert['trade_id'] = trade_id
+                elif status == 'CLOSED':
+                    alert['exit_price'] = exit_price
+                    alert['exit_timestamp'] = datetime.now().isoformat()
+                    alert['pnl'] = pnl
+                
+                # Write back to file
+                with open(alerts_file, 'w', encoding='utf-8') as f:
+                    json.dump(alerts, f, ensure_ascii=False, indent=2)
+                
+                logger.info(f"✅ Alert {alert_id} status updated to {status}")
+                return True
+        
+        logger.warning(f"⚠️ Alert {alert_id} not found")
+        return False
+        
     except Exception as e:
         logger.error(f"❌ Error updating alert status: {str(e)}")
         return False
@@ -319,6 +300,53 @@ def verify_request_signature():
     except:
         return False
 
+def get_live_market_data(symbols):
+    """Get live market data for symbols"""
+    try:
+        logger.info(f"📊 Fetching live market data for {len(symbols)} symbols...")
+        
+        if not dhan:
+            logger.error("❌ Dhan client not initialized")
+            return {}
+        
+        # Get live quotes for symbols
+        live_data = {}
+        
+        for symbol in symbols:
+            try:
+                # Try to get quote data
+                quote_result = dhan.quote_data(
+                    securities=[{
+                        'securityId': symbol,
+                        'exchangeSegment': dhan.NSE
+                    }]
+                )
+                
+                if quote_result and isinstance(quote_result, list) and len(quote_result) > 0:
+                    quote = quote_result[0]
+                    live_data[symbol] = {
+                        'last_price': quote.get('lastTradedPrice', 0),
+                        'bid_price': quote.get('topBid', 0),
+                        'ask_price': quote.get('topAsk', 0),
+                        'volume': quote.get('volume', 0),
+                        'change': quote.get('change', 0),
+                        'change_percent': quote.get('changePercent', 0)
+                    }
+                    logger.info(f"✅ Live data for {symbol}: ₹{live_data[symbol]['last_price']}")
+                else:
+                    logger.warning(f"⚠️ No live data for {symbol}")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to get live data for {symbol}: {str(e)}")
+                continue
+        
+        logger.info(f"✅ Live market data fetched for {len(live_data)} symbols")
+        return live_data
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching live market data: {str(e)}")
+        return {}
+
 def get_dhan_data():
     """Get all data from Dhan API"""
     global dhan, connection_status
@@ -361,13 +389,34 @@ def get_dhan_data():
             logger.warning(f"⚠️ Could not fetch trade history: {str(e)}")
             trade_history = {'data': []}
         
+        # Get live market data for better price accuracy
+        symbols_to_fetch = []
+        
+        # Extract symbols from holdings
+        if holdings and 'data' in holdings:
+            for holding in holdings['data']:
+                symbol = holding.get('tradingSymbol') or holding.get('symbol')
+                if symbol:
+                    symbols_to_fetch.append(symbol)
+        
+        # Extract symbols from positions
+        if positions and 'data' in positions:
+            for position in positions['data']:
+                symbol = position.get('tradingSymbol') or position.get('symbol')
+                if symbol and symbol not in symbols_to_fetch:
+                    symbols_to_fetch.append(symbol)
+        
+        # Get live market data
+        live_market_data = get_live_market_data(symbols_to_fetch[:20])  # Limit to 20 symbols
+        
         # Combine all data
         raw_data = {
             'fund_limits': fund_limits,
             'holdings': holdings,
             'positions': positions,
             'orders': orders,
-            'trade_history': trade_history
+            'trade_history': trade_history,
+            'live_market_data': live_market_data
         }
         
         # Process data
@@ -417,7 +466,7 @@ def refresh_connection():
     
     logger.info("🔄 Refreshing Dhan API connection...")
     
-    if initialize_dhan():
+    if refresh_dhan_connection():
         return jsonify({
             'success': True,
             'message': 'Connection refreshed successfully',
@@ -434,32 +483,40 @@ def refresh_connection():
 def health_check():
     """Health check endpoint"""
     try:
-        # Test database connection
-        db_status = "unknown"
-        db_info = "unknown"
+        # Test JSON storage
+        storage_status = "unknown"
+        storage_info = "unknown"
         try:
-            db_path = os.path.join('instance', 'trading_automation.db')
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM trading_alerts')
-            alert_count = cursor.fetchone()[0]
-            cursor.execute('SELECT COUNT(*) FROM error_logs')
-            log_count = cursor.fetchone()[0]
-            conn.close()
-            db_status = "healthy"
-            db_info = f"Alerts: {alert_count}, Logs: {log_count}"
-        except Exception as db_e:
-            db_status = "unhealthy"
-            db_info = str(db_e)
+            alerts_file = os.path.join('data', 'trading_alerts.json')
+            logs_file = os.path.join('data', 'error_logs.json')
+            
+            alert_count = 0
+            log_count = 0
+            
+            if os.path.exists(alerts_file):
+                with open(alerts_file, 'r', encoding='utf-8') as f:
+                    alerts = json.load(f)
+                    alert_count = len(alerts)
+            
+            if os.path.exists(logs_file):
+                with open(logs_file, 'r', encoding='utf-8') as f:
+                    logs = json.load(f)
+                    log_count = len(logs)
+            
+            storage_status = "healthy"
+            storage_info = f"Alerts: {alert_count}, Logs: {log_count}"
+        except Exception as storage_e:
+            storage_status = "unhealthy"
+            storage_info = str(storage_e)
         
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'service': 'Dhan Portfolio Dashboard',
             'connection': connection_status,
-            'database': {
-                'status': db_status,
-                'info': db_info
+            'storage': {
+                'status': storage_status,
+                'info': storage_info
             }
         })
     except Exception as e:
@@ -504,16 +561,35 @@ def square_off_position():
         
         # Use the correct Dhan API syntax based on documentation
         try:
-            # Place order using the correct Dhan API syntax
-            result = dhan.place_order(
-                security_id=security_id,
-                exchange_segment=dhan.NSE_FNO,  # Use constant for NSE F&O
-                transaction_type=dhan.SELL,     # Use constant for SELL
-                quantity=quantity,
-                order_type=dhan.MARKET,         # Use constant for MARKET
-                product_type=dhan.INTRA,        # Use constant for INTRADAY
-                price=0                         # Market order
-            )
+            # First, determine the correct exchange segment based on the security
+            # For now, we'll try both NSE and NSE_FNO
+            exchange_segments = [dhan.NSE, dhan.NSE_FNO]
+            result = None
+            
+            for exchange_segment in exchange_segments:
+                try:
+                    logger.info(f"🔄 Trying to square off with exchange segment: {exchange_segment}")
+                    
+                    # Place order using the correct Dhan API syntax
+                    result = dhan.place_order(
+                        security_id=security_id,
+                        exchange_segment=exchange_segment,
+                        transaction_type=dhan.SELL,     # Use constant for SELL
+                        quantity=quantity,
+                        order_type=dhan.MARKET,         # Use constant for MARKET
+                        product_type=dhan.INTRA,        # Use constant for INTRADAY
+                        price=0                         # Market order
+                    )
+                    
+                    logger.info(f"📊 Order attempt result: {result}")
+                    
+                    # If successful, break out of the loop
+                    if result and result.get('status') == 'success':
+                        break
+                        
+                except Exception as segment_error:
+                    logger.warning(f"⚠️ Failed with exchange segment {exchange_segment}: {str(segment_error)}")
+                    continue
             
             logger.info(f"📊 Square off result: {result}")
             
@@ -579,15 +655,33 @@ def square_off_all_positions():
                     exchange_segment = dhan.NSE_FNO
                 
                 # Place square off order using the correct Dhan API syntax
-                result = dhan.place_order(
-                    security_id=security_id,
-                    exchange_segment=exchange_segment,
-                    transaction_type=dhan.SELL,     # Use constant for SELL
-                    quantity=quantity,
-                    order_type=dhan.MARKET,         # Use constant for MARKET
-                    product_type=dhan.INTRA,        # Use constant for INTRADAY
-                    price=0                         # Market order
-                )
+                # Try both exchange segments for better compatibility
+                exchange_segments = [exchange_segment, dhan.NSE, dhan.NSE_FNO]
+                result = None
+                
+                for seg in exchange_segments:
+                    try:
+                        logger.info(f"🔄 Trying to square off {trading_symbol} with exchange segment: {seg}")
+                        
+                        result = dhan.place_order(
+                            security_id=security_id,
+                            exchange_segment=seg,
+                            transaction_type=dhan.SELL,     # Use constant for SELL
+                            quantity=quantity,
+                            order_type=dhan.MARKET,         # Use constant for MARKET
+                            product_type=dhan.INTRA,        # Use constant for INTRADAY
+                            price=0                         # Market order
+                        )
+                        
+                        logger.info(f"📊 Order attempt result: {result}")
+                        
+                        # If successful, break out of the loop
+                        if result and result.get('status') == 'success':
+                            break
+                            
+                    except Exception as segment_error:
+                        logger.warning(f"⚠️ Failed with exchange segment {seg}: {str(segment_error)}")
+                        continue
                 
                 if result.get('status') == 'success':
                     order_id = result.get('data', {}).get('orderId', 'UNKNOWN')
@@ -993,19 +1087,22 @@ def should_execute_alert(alert_data):
 def check_daily_trade_limits():
     """Check daily trade limits"""
     try:
-        # Get today's trades count
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        # Get today's trades count from JSON storage
+        alerts_file = os.path.join('data', 'trading_alerts.json')
+        
+        if not os.path.exists(alerts_file):
+            return True  # No alerts file means no trades today
+        
+        with open(alerts_file, 'r', encoding='utf-8') as f:
+            alerts = json.load(f)
         
         today = datetime.now().strftime('%Y-%m-%d')
-        cursor.execute('''
-            SELECT COUNT(*) FROM trading_alerts 
-            WHERE DATE(timestamp) = ? AND status IN ('EXECUTED', 'CLOSED')
-        ''', (today,))
+        trade_count = 0
         
-        trade_count = cursor.fetchone()[0]
-        conn.close()
+        for alert in alerts:
+            if (alert.get('status') in ['EXECUTED', 'CLOSED'] and 
+                alert.get('timestamp', '').startswith(today)):
+                trade_count += 1
         
         if trade_count >= Config.MAX_DAILY_TRADES:
             logger.warning(f"⚠️ Daily trade limit reached: {trade_count}/{Config.MAX_DAILY_TRADES}")
@@ -1481,35 +1578,31 @@ def execute_alert():
         
         logger.info(f"🚀 Manually executing alert ID: {alert_id}")
         
-        # Get the alert from database
-        db_path = os.path.join('instance', 'trading_automation.db')
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM trading_alerts WHERE alert_id = ?', (alert_id,))
-        alert = cursor.fetchone()
-        conn.close()
+        # Get the alert from JSON storage
+        alerts_file = os.path.join('data', 'trading_alerts.json')
+        
+        if not os.path.exists(alerts_file):
+            logger.error(f"❌ Alerts file not found")
+            log_error('ERROR', 'execute_alert', f'Alerts file not found')
+            return jsonify({'success': False, 'error': 'Alerts file not found'})
+        
+        with open(alerts_file, 'r', encoding='utf-8') as f:
+            alerts = json.load(f)
+        
+        # Find the alert by alert_id
+        alert = None
+        for a in alerts:
+            if str(a.get('alert_id')) == str(alert_id):
+                alert = a
+                break
         
         if not alert:
             logger.error(f"❌ Alert not found: {alert_id}")
             log_error('ERROR', 'execute_alert', f'Alert not found: {alert_id}')
             return jsonify({'success': False, 'error': 'Alert not found'})
         
-        # Convert alert tuple to dict for easier handling
-        alert_data = {
-            'id': alert[0],
-            'alert_id': alert[1],
-            'symbol': alert[2],
-            'alert_type': alert[3],
-            'action': alert[4],
-            'price': alert[5],
-            'quantity': alert[6],
-            'status': alert[7],
-            'message': alert[8],
-            'timestamp': alert[9],
-            'strategy': alert[10],
-            'timeframe': alert[11],
-            'exchange': alert[12]
-        }
+        # Use the alert data directly
+        alert_data = alert
         
         # Debug logging
         logger.info(f"🔍 Debug - Alert data: {alert_data}")
@@ -1556,27 +1649,20 @@ def execute_alert():
         
         if success:
             # Update alert status to EXECUTED
-            db_path = os.path.join('instance', 'trading_automation.db')
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute('UPDATE trading_alerts SET status = ?, executed_at = ? WHERE id = ?', 
-                         ('EXECUTED', datetime.now().isoformat(), alert_id))
-            conn.commit()
-            conn.close()
-            
-            logger.info(f"✅ Alert {alert_id} executed successfully")
-            return jsonify({'success': True, 'message': 'Alert executed successfully'})
+            if update_alert_status(alert_id, 'EXECUTED', f"trade_{int(time.time())}"):
+                logger.info(f"✅ Alert {alert_id} executed successfully")
+                return jsonify({'success': True, 'message': 'Alert executed successfully'})
+            else:
+                logger.error(f"❌ Failed to update alert status")
+                return jsonify({'success': False, 'error': 'Failed to update alert status'})
         else:
             # Update alert status to FAILED
-            db_path = os.path.join('instance', 'trading_automation.db')
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute('UPDATE trading_alerts SET status = ? WHERE id = ?', ('FAILED', alert_id))
-            conn.commit()
-            conn.close()
-            
-            logger.error(f"❌ Alert {alert_id} execution failed")
-            return jsonify({'success': False, 'error': 'Trade execution failed'})
+            if update_alert_status(alert_id, 'FAILED'):
+                logger.error(f"❌ Alert {alert_id} execution failed")
+                return jsonify({'success': False, 'error': 'Trade execution failed'})
+            else:
+                logger.error(f"❌ Failed to update alert status")
+                return jsonify({'success': False, 'error': 'Failed to update alert status'})
             
     except Exception as e:
         logger.error(f"❌ Error in execute_alert: {str(e)}")
@@ -1892,12 +1978,160 @@ def execute_nifty_option_exit(alert_data):
         log_error('ERROR', 'execute_nifty_option_exit', f'Error in execute_nifty_option_exit: {str(e)}')
         return False
 
+def refresh_dhan_connection():
+    """Refresh Dhan API connection with retry logic"""
+    global dhan, connection_status
+    
+    logger.info("🔄 Refreshing Dhan API connection...")
+    
+    max_retries = 3
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            logger.info(f"🔄 Attempt {retry_count + 1} of {max_retries}")
+            
+            # Reinitialize Dhan client
+            dhan = dhanhq(Config.DHAN_CLIENT_ID, Config.DHAN_ACCESS_TOKEN)
+            
+            # Test connection with fund limits
+            fund_limits = dhan.get_fund_limits()
+            logger.info(f"✅ Fund Limits Response: {fund_limits}")
+            
+            if fund_limits:
+                connection_status['connected'] = True
+                connection_status['message'] = 'Connected to Dhan API'
+                connection_status['last_check'] = datetime.now().isoformat()
+                logger.info("✅ Dhan API connection refreshed successfully!")
+                return True
+            else:
+                logger.warning(f"⚠️ Attempt {retry_count + 1} failed - No response from Dhan API")
+                
+        except Exception as e:
+            logger.error(f"❌ Attempt {retry_count + 1} failed: {str(e)}")
+            connection_status['connected'] = False
+            connection_status['message'] = f'Connection error: {str(e)}'
+            connection_status['last_check'] = datetime.now().isoformat()
+        
+        retry_count += 1
+        
+        if retry_count < max_retries:
+            logger.info(f"⏳ Waiting 5 seconds before retry {retry_count + 1}...")
+            time.sleep(5)
+    
+    logger.error(f"❌ Failed to refresh Dhan API connection after {max_retries} attempts")
+    connection_status['connected'] = False
+    connection_status['message'] = 'Failed to refresh connection after multiple attempts'
+    connection_status['last_check'] = datetime.now().isoformat()
+    return False
+
+def get_current_balance():
+    """Get current account balance and limits"""
+    try:
+        if not dhan:
+            logger.error("❌ Dhan client not initialized")
+            return None
+        
+        logger.info("💰 Fetching current balance...")
+        
+        # Get fund limits
+        fund_limits = dhan.get_fund_limits()
+        if not fund_limits:
+            logger.warning("⚠️ No fund limits data available")
+            return None
+        
+        logger.info(f"✅ Balance data: {fund_limits}")
+        return fund_limits
+        
+    except Exception as e:
+        logger.error(f"❌ Error fetching current balance: {str(e)}")
+        return None
+
+@app.route('/api/balance')
+def get_balance_api():
+    """Get current balance via API"""
+    try:
+        balance_data = get_current_balance()
+        if balance_data:
+            return jsonify({
+                'success': True,
+                'balance': balance_data,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to fetch balance data'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"❌ Error in balance API: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error fetching balance: {str(e)}'
+        }), 500
+
+@app.route('/api/test-square-off', methods=['POST'])
+def test_square_off():
+    """Test square off functionality with mock data"""
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol', 'TEST')
+        quantity = data.get('quantity', 1)
+        
+        logger.info(f"🧪 Testing square off for {symbol} with quantity {quantity}")
+        
+        # Create a test alert
+        test_alert = {
+            'alert_id': f"test_square_{int(time.time())}",
+            'symbol': symbol,
+            'action': 'SELL',
+            'quantity': quantity,
+            'message': 'Test square off'
+        }
+        
+        # Save test alert
+        if save_alert(test_alert):
+            logger.info(f"✅ Test alert created: {test_alert['alert_id']}")
+            
+            # Try to execute the square off
+            success = execute_stock_sell_trade(test_alert)
+            
+            if success:
+                # Update alert status
+                update_alert_status(test_alert['alert_id'], 'EXECUTED', f"test_trade_{int(time.time())}")
+                return jsonify({
+                    'success': True,
+                    'message': f'Test square off for {symbol} executed successfully',
+                    'alert_id': test_alert['alert_id']
+                })
+            else:
+                # Update alert status
+                update_alert_status(test_alert['alert_id'], 'FAILED')
+                return jsonify({
+                    'success': False,
+                    'error': f'Test square off for {symbol} failed'
+                })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to create test alert'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"❌ Error in test square off: {str(e)}")
+        log_error('ERROR', 'test_square_off', f'Error in test square off: {str(e)}')
+        return jsonify({
+            'success': False,
+            'error': f'Error in test square off: {str(e)}'
+        }), 500
+
 # Initialize Dhan connection on startup
 if __name__ == '__main__':
     logger.info("🚀 Starting Dhan Portfolio Dashboard...")
     
-    # Initialize alerts database
-    init_alerts_db()
+    # Initialize alerts storage
+    init_alerts_storage()
     
     # Initialize Dhan connection
     initialize_dhan()
@@ -1909,8 +2143,8 @@ else:
     # The app will be served by gunicorn
     logger.info("🚀 Starting Dhan Portfolio Dashboard in production mode...")
     
-    # Initialize alerts database
-    init_alerts_db()
+    # Initialize alerts storage
+    init_alerts_storage()
     
     # Initialize Dhan connection
     initialize_dhan()
