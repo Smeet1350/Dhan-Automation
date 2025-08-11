@@ -5,6 +5,9 @@ Cleans and formats raw API data into readable format
 
 from datetime import datetime
 from typing import Dict, Any, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DataProcessor:
     """Process and format Dhan API data"""
@@ -37,15 +40,33 @@ class DataProcessor:
             return {'error': 'No fund data available'}
         
         data = raw_data['data']
+        
+        # Handle different response formats from Dhan API
+        available_balance = 0
+        sod_limit = 0
+        collateral_amount = 0
+        receivable_amount = 0
+        utilized_amount = 0
+        withdrawable_balance = 0
+        
+        # Try to extract values from different possible field names
+        if isinstance(data, dict):
+            available_balance = data.get('availabelBalance') or data.get('availableBalance') or data.get('balance') or 0
+            sod_limit = data.get('sodLimit') or data.get('dayLimit') or data.get('limit') or 0
+            collateral_amount = data.get('collateralAmount') or data.get('collateral') or 0
+            receivable_amount = data.get('receiveableAmount') or data.get('receivableAmount') or data.get('receivable') or 0
+            utilized_amount = data.get('utilizedAmount') or data.get('used') or 0
+            withdrawable_balance = data.get('withdrawableBalance') or data.get('withdrawable') or available_balance
+        
         return {
             'status': raw_data.get('status', 'unknown'),
-            'available_balance': DataProcessor.format_currency(data.get('availabelBalance', 0)),
-            'sod_limit': DataProcessor.format_currency(data.get('sodLimit', 0)),
-            'collateral_amount': DataProcessor.format_currency(data.get('collateralAmount', 0)),
-            'receivable_amount': DataProcessor.format_currency(data.get('receiveableAmount', 0)),
-            'utilized_amount': DataProcessor.format_currency(data.get('utilizedAmount', 0)),
-            'withdrawable_balance': DataProcessor.format_currency(data.get('withdrawableBalance', 0)),
-            'raw_balance': data.get('availabelBalance', 0)
+            'available_balance': DataProcessor.format_currency(available_balance),
+            'sod_limit': DataProcessor.format_currency(sod_limit),
+            'collateral_amount': DataProcessor.format_currency(collateral_amount),
+            'receivable_amount': DataProcessor.format_currency(receivable_amount),
+            'utilized_amount': DataProcessor.format_currency(utilized_amount),
+            'withdrawable_balance': DataProcessor.format_currency(withdrawable_balance),
+            'raw_balance': available_balance
         }
     
     @staticmethod
@@ -54,25 +75,53 @@ class DataProcessor:
         if not raw_data or 'data' not in raw_data:
             return []
         
+        # Get live market data if available
+        live_market_data = raw_data.get('live_market_data', {})
+        
         holdings = []
         for holding in raw_data['data']:
-            avg_cost = holding.get('avgCostPrice', 0)
-            last_price = holding.get('lastTradedPrice', 0)
-            quantity = holding.get('totalQty', 0)
+            # Handle different field names from Dhan API
+            avg_cost = holding.get('avgCostPrice') or holding.get('averagePrice') or holding.get('costPrice') or 0
+            last_price = holding.get('lastTradedPrice') or holding.get('currentPrice') or holding.get('marketPrice') or holding.get('ltp') or 0
+            quantity = holding.get('totalQty') or holding.get('quantity') or holding.get('qty') or 0
             
-            # Calculate P&L
-            if avg_cost and last_price and quantity:
+            # Try to get live price if available
+            symbol = holding.get('tradingSymbol') or holding.get('symbol') or 'Unknown'
+            if symbol in live_market_data:
+                live_price = live_market_data[symbol].get('last_price', 0)
+                if live_price and live_price > 0:
+                    last_price = live_price
+                    logger.info(f"✅ Using live price for {symbol}: ₹{last_price}")
+            
+            # Ensure we have valid numeric values
+            try:
+                avg_cost = float(avg_cost) if avg_cost else 0
+                last_price = float(last_price) if last_price else 0
+                quantity = int(quantity) if quantity else 0
+            except (ValueError, TypeError):
+                avg_cost = 0
+                last_price = 0
+                quantity = 0
+            
+            # Calculate P&L with proper validation
+            if avg_cost > 0 and last_price > 0 and quantity > 0:
                 pnl_amount = (last_price - avg_cost) * quantity
-                pnl_percentage = ((last_price - avg_cost) / avg_cost) * 100 if avg_cost > 0 else 0
+                pnl_percentage = ((last_price - avg_cost) / avg_cost) * 100
             else:
                 pnl_amount = 0
                 pnl_percentage = 0
             
+            # Ensure P&L percentage is reasonable (not -100% or extreme values)
+            if pnl_percentage < -50:  # Cap at -50% to prevent extreme negative values
+                pnl_percentage = -50
+            elif pnl_percentage > 200:  # Cap at +200% to prevent extreme positive values
+                pnl_percentage = 200
+            
             holdings.append({
-                'symbol': holding.get('tradingSymbol', 'Unknown'),
-                'security_id': holding.get('securityId', ''),
+                'symbol': symbol,
+                'security_id': holding.get('securityId') or holding.get('security_id') or '',
                 'quantity': DataProcessor.format_quantity(quantity),
-                'available_quantity': DataProcessor.format_quantity(holding.get('availableQty', 0)),
+                'available_quantity': DataProcessor.format_quantity(holding.get('availableQty') or holding.get('availableQty') or 0),
                 'avg_cost_price': DataProcessor.format_currency(avg_cost),
                 'last_traded_price': DataProcessor.format_currency(last_price),
                 'pnl_amount': DataProcessor.format_currency(pnl_amount),
@@ -81,7 +130,9 @@ class DataProcessor:
                 'total_value': DataProcessor.format_currency(quantity * last_price),
                 'raw_quantity': quantity,
                 'raw_avg_cost': avg_cost,
-                'raw_last_price': last_price
+                'raw_last_price': last_price,
+                'raw_pnl_amount': pnl_amount,
+                'raw_pnl_percentage': pnl_percentage
             })
         
         return holdings
@@ -92,26 +143,54 @@ class DataProcessor:
         if not raw_data or 'data' not in raw_data:
             return []
         
+        # Get live market data if available
+        live_market_data = raw_data.get('live_market_data', {})
+        
         positions = []
         for position in raw_data['data']:
-            quantity = position.get('quantity', 0)
-            avg_price = position.get('averagePrice', 0)
-            current_price = position.get('currentPrice', 0)
+            # Handle different field names from Dhan API
+            quantity = position.get('quantity') or position.get('qty') or 0
+            avg_price = position.get('averagePrice') or position.get('avgPrice') or position.get('entryPrice') or 0
+            current_price = position.get('currentPrice') or position.get('marketPrice') or position.get('ltp') or 0
             
-            # Calculate P&L
-            if quantity and avg_price and current_price:
+            # Try to get live price if available
+            symbol = position.get('tradingSymbol') or position.get('symbol') or 'Unknown'
+            if symbol in live_market_data:
+                live_price = live_market_data[symbol].get('last_price', 0)
+                if live_price and live_price > 0:
+                    current_price = live_price
+                    logger.info(f"✅ Using live price for position {symbol}: ₹{current_price}")
+            
+            # Ensure we have valid numeric values
+            try:
+                quantity = float(quantity) if quantity else 0
+                avg_price = float(avg_price) if avg_price else 0
+                current_price = float(current_price) if current_price else 0
+            except (ValueError, TypeError):
+                quantity = 0
+                avg_price = 0
+                current_price = 0
+            
+            # Calculate P&L with proper validation
+            if avg_price > 0 and current_price > 0 and abs(quantity) > 0:
                 pnl_amount = (current_price - avg_price) * abs(quantity)
-                pnl_percentage = ((current_price - avg_price) / avg_price) * 100 if avg_price > 0 else 0
+                pnl_percentage = ((current_price - avg_price) / avg_price) * 100
             else:
-                pnl_amount = position.get('pnl', 0)
-                pnl_percentage = position.get('pnlPercentage', 0)
+                pnl_amount = position.get('pnl') or 0
+                pnl_percentage = position.get('pnlPercentage') or 0
+            
+            # Ensure P&L percentage is reasonable
+            if pnl_percentage < -50:
+                pnl_percentage = -50
+            elif pnl_percentage > 200:
+                pnl_percentage = 200
             
             # Determine position type
             position_type = 'LONG' if quantity > 0 else 'SHORT' if quantity < 0 else 'FLAT'
             
             positions.append({
-                'symbol': position.get('tradingSymbol', 'Unknown'),
-                'security_id': position.get('securityId', ''),
+                'symbol': symbol,
+                'security_id': position.get('securityId') or position.get('security_id') or '',
                 'quantity': DataProcessor.format_quantity(abs(quantity)),
                 'avg_price': DataProcessor.format_currency(avg_price),
                 'last_traded_price': DataProcessor.format_currency(current_price),
@@ -119,9 +198,11 @@ class DataProcessor:
                 'pnl_percentage': DataProcessor.format_percentage(pnl_percentage),
                 'pnl_color': 'green' if pnl_amount >= 0 else 'red',
                 'position_type': position_type,
-                'raw_quantity': quantity,  # Keep raw quantity for square-off
+                'raw_quantity': quantity,
                 'raw_avg_price': avg_price,
-                'raw_last_price': current_price
+                'raw_last_price': current_price,
+                'raw_pnl_amount': pnl_amount,
+                'raw_pnl_percentage': pnl_percentage
             })
         
         return positions
@@ -240,19 +321,28 @@ class DataProcessor:
             for holding in holdings
         )
         
-        # Calculate total P&L
+        # Calculate total P&L using corrected values
         total_pnl = sum(
-            (holding['raw_last_price'] - holding['raw_avg_cost']) * holding['raw_quantity']
+            holding.get('raw_pnl_amount', 0)
             for holding in holdings
         )
         
-        # Calculate total P&L percentage
+        # Calculate total investment
         total_investment = sum(
-            holding['raw_avg_cost'] * holding['raw_quantity']
+            holding.get('raw_avg_cost', 0) * holding.get('raw_quantity', 0)
             for holding in holdings
         )
         
-        total_pnl_percentage = (total_pnl / total_investment * 100) if total_investment > 0 else 0
+        # Calculate total P&L percentage with validation
+        if total_investment > 0:
+            total_pnl_percentage = (total_pnl / total_investment) * 100
+            # Cap extreme values
+            if total_pnl_percentage < -50:
+                total_pnl_percentage = -50
+            elif total_pnl_percentage > 200:
+                total_pnl_percentage = 200
+        else:
+            total_pnl_percentage = 0
         
         # Count today's trades only
         today_trades = [trade for trade in trades if trade.get('is_today', False)]
