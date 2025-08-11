@@ -77,6 +77,7 @@ class DataProcessor:
         
         # Get live market data if available
         live_market_data = raw_data.get('live_market_data', {})
+        security_id_mapping = live_market_data.get('_security_ids', {})
         
         holdings = []
         for holding in raw_data['data']:
@@ -87,7 +88,7 @@ class DataProcessor:
             
             # Try to get live price if available
             symbol = holding.get('tradingSymbol') or holding.get('symbol') or 'Unknown'
-            if symbol in live_market_data:
+            if symbol in live_market_data and symbol != '_security_ids':
                 live_price = live_market_data[symbol].get('last_price', 0)
                 if live_price and live_price > 0:
                     last_price = live_price
@@ -117,9 +118,12 @@ class DataProcessor:
             elif pnl_percentage > 200:  # Cap at +200% to prevent extreme positive values
                 pnl_percentage = 200
             
+            # Get security ID from mapping or from holding data
+            security_id = security_id_mapping.get(symbol) or holding.get('securityId') or holding.get('security_id') or ''
+            
             holdings.append({
                 'symbol': symbol,
-                'security_id': holding.get('securityId') or holding.get('security_id') or '',
+                'security_id': security_id,
                 'quantity': DataProcessor.format_quantity(quantity),
                 'available_quantity': DataProcessor.format_quantity(holding.get('availableQty') or holding.get('availableQty') or 0),
                 'avg_cost_price': DataProcessor.format_currency(avg_cost),
@@ -145,6 +149,7 @@ class DataProcessor:
         
         # Get live market data if available
         live_market_data = raw_data.get('live_market_data', {})
+        security_id_mapping = live_market_data.get('_security_ids', {})
         
         positions = []
         for position in raw_data['data']:
@@ -155,7 +160,7 @@ class DataProcessor:
             
             # Try to get live price if available
             symbol = position.get('tradingSymbol') or position.get('symbol') or 'Unknown'
-            if symbol in live_market_data:
+            if symbol in live_market_data and symbol != '_security_ids':
                 live_price = live_market_data[symbol].get('last_price', 0)
                 if live_price and live_price > 0:
                     current_price = live_price
@@ -188,9 +193,12 @@ class DataProcessor:
             # Determine position type
             position_type = 'LONG' if quantity > 0 else 'SHORT' if quantity < 0 else 'FLAT'
             
+            # Get security ID from mapping or from position data
+            security_id = security_id_mapping.get(symbol) or position.get('securityId') or position.get('security_id') or ''
+            
             positions.append({
                 'symbol': symbol,
-                'security_id': position.get('securityId') or position.get('security_id') or '',
+                'security_id': security_id,
                 'quantity': DataProcessor.format_quantity(abs(quantity)),
                 'avg_price': DataProcessor.format_currency(avg_price),
                 'last_traded_price': DataProcessor.format_currency(current_price),
