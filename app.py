@@ -1,5 +1,10 @@
 from flask import Flask, render_template, jsonify, request
 from dhanhq import dhanhq
+try:
+    from dhanhq import orderupdate
+    ORDERUPDATE_AVAILABLE = True
+except ImportError:
+    ORDERUPDATE_AVAILABLE = False
 import logging
 import hashlib
 import hmac
@@ -11,6 +16,7 @@ from data_processor import DataProcessor
 from flask_cors import CORS
 import sqlite3
 import json
+import threading
 
 # Configure logging with UTF-8 encoding
 logging.basicConfig(
@@ -753,15 +759,15 @@ def square_off_position():
                 try:
                     logger.info(f"🔄 Trying to square off with exchange segment: {exchange_segment}")
                     
-                    # Place order using the correct Dhan API syntax
+                    # Place order using the correct Dhan API syntax (based on your example)
                     result = dhan.place_order(
                         security_id=security_id,
                         exchange_segment=exchange_segment,
-                        transaction_type=dhan.SELL,     # Use constant for SELL
+                        transaction_type=dhan.SELL,     # SELL for square off
                         quantity=quantity,
-                        order_type=dhan.MARKET,         # Use constant for MARKET
-                        product_type=dhan.INTRA,        # Use constant for INTRADAY
-                        price=0                         # Market order
+                        order_type=dhan.MARKET,         # MARKET order
+                        product_type=dhan.INTRA,        # INTRADAY
+                        price=0                         # Market order price
                     )
                     
                     logger.info(f"📊 Order attempt result: {result}")
@@ -865,14 +871,15 @@ def square_off_all_positions():
                     try:
                         logger.info(f"🔄 Trying to square off {trading_symbol} with exchange segment: {seg}")
                         
+                        # Place order using the correct Dhan API syntax (based on your example)
                         result = dhan.place_order(
                             security_id=security_id,
                             exchange_segment=seg,
-                            transaction_type=dhan.SELL,     # Use constant for SELL
+                            transaction_type=dhan.SELL,     # SELL for square off
                             quantity=quantity,
-                            order_type=dhan.MARKET,         # Use constant for MARKET
-                            product_type=dhan.INTRA,        # Use constant for INTRADAY
-                            price=0                         # Market order
+                            order_type=dhan.MARKET,         # MARKET order
+                            product_type=dhan.INTRA,        # INTRADAY
+                            price=0                         # Market order price
                         )
                         
                         logger.info(f"📊 Order attempt result: {result}")
@@ -889,6 +896,7 @@ def square_off_all_positions():
                 if not result or result.get('status') != 'success':
                     logger.info(f"🔄 Trying generic square off approach for {trading_symbol}...")
                     try:
+                        # Try with default NSE segment using correct API syntax
                         result = dhan.place_order(
                             security_id=security_id,
                             exchange_segment=dhan.NSE,
@@ -2384,6 +2392,119 @@ def debug_market_data():
             'error': f'Error in debug market data: {str(e)}'
         }), 500
 
+# Add live order update functionality
+def start_order_update_socket():
+    """Start live order update WebSocket connection"""
+    if not ORDERUPDATE_AVAILABLE:
+        logger.warning("⚠️ dhanhq.orderupdate not available - live order updates disabled")
+        return
+    
+    try:
+        def run_order_update():
+            try:
+                logger.info("🔌 Starting Dhan WebSocket connection for live order updates...")
+                order_client = orderupdate.OrderSocket(Config.DHAN_CLIENT_ID, Config.DHAN_ACCESS_TOKEN)
+                
+                while True:
+                    try:
+                        order_client.connect_to_dhan_websocket_sync()
+                        logger.info("✅ WebSocket connected successfully")
+                    except Exception as e:
+                        logger.error(f"❌ WebSocket connection error: {e}. Reconnecting in 5 seconds...")
+                        time.sleep(5)
+                        
+            except Exception as e:
+                logger.error(f"❌ Error in order update WebSocket: {e}")
+        
+        # Start WebSocket in a separate thread
+        order_thread = threading.Thread(target=run_order_update, daemon=True)
+        order_thread.start()
+        logger.info("🚀 Order update WebSocket started in background thread")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to start order update WebSocket: {e}")
+
+@app.route('/api/test-square-off-order', methods=['POST'])
+def test_square_off_order():
+    """Test endpoint to verify square off order placement"""
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol', 'TATASTEEL')
+        quantity = data.get('quantity', 1)
+        
+        logger.info(f"🧪 Testing square off order placement for: {symbol}, Quantity: {quantity}")
+        
+        # Get the security ID from symbol
+        security_id = get_security_id_from_symbol(symbol)
+        if not security_id:
+            return jsonify({'success': False, 'error': f'No security ID found for symbol: {symbol}'})
+        
+        logger.info(f"🔍 Using security ID: {security_id} for symbol: {symbol}")
+        
+        # Test the actual order placement using your example format
+        try:
+            logger.info("🧪 Placing test square off order...")
+            
+            # Use the exact format from your example
+            result = dhan.place_order(
+                security_id=security_id,
+                exchange_segment=dhan.NSE,
+                transaction_type=dhan.SELL,     # SELL for square off
+                quantity=quantity,
+                order_type=dhan.MARKET,         # MARKET order
+                product_type=dhan.INTRA,        # INTRADAY
+                price=0                         # Market order price
+            )
+            
+            logger.info(f"📊 Test order result: {result}")
+            
+            if result and result.get('status') == 'success':
+                order_id = result.get('data', {}).get('orderId', 'UNKNOWN')
+                logger.info(f"✅ Test order placed successfully! Order ID: {order_id}")
+                
+                # Log the successful test
+                log_error('INFO', 'test_square_off_order', 
+                         f'Test square off order successful for {symbol}', 
+                         f'Order ID: {order_id}, Result: {result}')
+                
+                return jsonify({
+                    'success': True, 
+                    'message': f'Test square off order placed successfully for {symbol}',
+                    'order_id': order_id,
+                    'result': result
+                })
+            else:
+                logger.error(f"❌ Test order failed: {result}")
+                log_error('ERROR', 'test_square_off_order', 
+                         f'Test square off order failed for {symbol}', 
+                         str(result))
+                
+                return jsonify({
+                    'success': False, 
+                    'error': f'Test order failed: {result}'
+                })
+                
+        except Exception as e:
+            logger.error(f"❌ Exception during test order placement: {str(e)}")
+            log_error('ERROR', 'test_square_off_order', 
+                     f'Exception during test order placement for {symbol}', 
+                     str(e))
+            
+            return jsonify({
+                'success': False, 
+                'error': f'Exception during order placement: {str(e)}'
+            })
+            
+    except Exception as e:
+        logger.error(f"❌ Error in test_square_off_order: {str(e)}")
+        log_error('ERROR', 'test_square_off_order', 
+                 f'Error in test_square_off_order: {str(e)}')
+        
+        return jsonify({
+            'success': False, 
+            'error': f'Error in test_square_off_order: {str(e)}'
+        })
+
 # Initialize Dhan connection on startup
 if __name__ == '__main__':
     logger.info("🚀 Starting Dhan Portfolio Dashboard...")
@@ -2393,6 +2514,9 @@ if __name__ == '__main__':
     
     # Initialize Dhan connection
     initialize_dhan()
+    
+    # Start the order update WebSocket
+    start_order_update_socket()
     
     # Development mode
     app.run(host='0.0.0.0', port=Config.PORT, debug=Config.DEBUG)
@@ -2406,3 +2530,6 @@ else:
     
     # Initialize Dhan connection
     initialize_dhan()
+    
+    # Start the order update WebSocket
+    start_order_update_socket()
