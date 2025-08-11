@@ -671,6 +671,10 @@
                     <i class="fas fa-exclamation-triangle"></i> Square Off All
                 </button>
                 
+                <button class="btn btn-primary" onclick="testSquareOff()">
+                    <i class="fas fa-vial"></i> Test Square Off
+                </button>
+                
                 <h3 style="margin-top: 32px;">📈 Auto-Refresh</h3>
                 <div style="margin-bottom: 16px;">
                     <label>
@@ -696,6 +700,11 @@
                 <!-- Portfolio Summary -->
                 <div class="stats-grid" id="portfolioSummary" style="display: none;">
                     <div class="stat-card">
+                        <h3>Available Balance</h3>
+                        <div class="stat-value" id="availableBalance">₹0.00</div>
+                        <div class="stat-change" id="balanceChange">-</div>
+                    </div>
+                    <div class="stat-card">
                         <h3>Total Investment</h3>
                         <div class="stat-value" id="totalInvestment">₹0.00</div>
                         <div class="stat-change" id="investmentChange">-</div>
@@ -714,6 +723,11 @@
                         <h3>Holdings</h3>
                         <div class="stat-value" id="totalHoldings">0</div>
                         <div class="stat-change">Active Positions</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Daily Limit</h3>
+                        <div class="stat-value" id="dailyLimit">₹0.00</div>
+                        <div class="stat-change">SOD Limit</div>
                     </div>
                 </div>
                 
@@ -865,6 +879,9 @@
             if (autoRefreshCheckbox.checked) {
                 startAutoRefresh();
             }
+            
+            // Load balance on initialization
+            loadBalance();
         }
         
         function startAutoRefresh() {
@@ -873,6 +890,7 @@
             }
             autoRefreshInterval = setInterval(() => {
                 loadPortfolioData();
+                loadBalance();
                 loadAlerts();
                 loadErrorLogs();
             }, 60000); // 60 seconds
@@ -1046,11 +1064,17 @@
         
         function updatePortfolioSummary(data) {
             const summary = data.summary || {};
+            const fundLimits = data.fund_limits || {};
             
             // Calculate holdings count from available data
             const holdingsCount = (data.holdings && data.holdings.length) || 
                                 (data.categorized_holdings && data.categorized_holdings.equity && data.categorized_holdings.equity.length) || 0;
             
+            // Update balance information
+            document.getElementById('availableBalance').textContent = fundLimits.available_balance || '₹0.00';
+            document.getElementById('dailyLimit').textContent = fundLimits.sod_limit || '₹0.00';
+            
+            // Update portfolio values
             document.getElementById('totalInvestment').textContent = summary.total_portfolio_value || '₹0.00';
             document.getElementById('currentValue').textContent = summary.total_portfolio_value || '₹0.00';
             document.getElementById('totalPnL').textContent = summary.total_pnl_amount || '₹0.00';
@@ -1075,6 +1099,19 @@
                 pnlElement.style.color = 'var(--danger)';
                 pnlChange.textContent = summary.total_pnl_percentage || '-1.46%';
                 pnlChange.className = 'stat-change negative';
+            }
+            
+            // Update balance change indicator
+            const balanceElement = document.getElementById('availableBalance');
+            const balanceChange = document.getElementById('balanceChange');
+            if (fundLimits.raw_balance && fundLimits.raw_balance > 0) {
+                balanceElement.style.color = 'var(--success)';
+                balanceChange.textContent = 'Available';
+                balanceChange.className = 'stat-change positive';
+            } else {
+                balanceElement.style.color = 'var(--danger)';
+                balanceChange.textContent = 'No Balance';
+                balanceChange.className = 'stat-change negative';
             }
         }
         
@@ -1385,6 +1422,34 @@
             closeModal('squareOffAllModal');
         }
         
+        async function testSquareOff() {
+            try {
+                showAlert('Testing square off functionality...', 'success');
+                
+                const response = await fetch('/api/test-square-off', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: 'TEST',
+                        quantity: 1
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Test square off successful!', 'success');
+                    loadAlerts(); // Refresh alerts
+                } else {
+                    showAlert(`Test square off failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error testing square off: ${error.message}`, 'error');
+            }
+        }
+        
         function showConfirmationModal(title, message, onConfirm) {
             document.getElementById('confirmationTitle').textContent = title;
             document.getElementById('confirmationMessage').textContent = message;
@@ -1403,8 +1468,26 @@
         
         function refreshAllData() {
             loadPortfolioData();
+            loadBalance();
             loadAlerts();
             loadErrorLogs();
+        }
+        
+        async function loadBalance() {
+            try {
+                console.log('💰 Loading balance data...');
+                const response = await fetch('/api/balance');
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Balance data loaded:', data.balance);
+                    // Balance will be updated when portfolio data is loaded
+                } else {
+                    console.warning('⚠️ Failed to load balance:', data.error);
+                }
+            } catch (error) {
+                console.error('❌ Error loading balance:', error);
+            }
         }
         
         async function loadAlerts() {
