@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "alert_id": "test_alert_1754887979",
+    "symbol": "TEST",
+    "action": "BUY",
+    "quantity": 1,
+    "price": 100.0,
+    "status": "PENDING",
+    "timestamp": "2025-08-11T10:22:59.827412"
+  }
+]
